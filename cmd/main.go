@@ -21,7 +21,7 @@ func main() {
 		return
 	}
 	port := viper.GetString("port")
-	if err := gol0.NewServer(port, handlers); err != nil {
+	if err := gol0.NewServer(port, handlers.InitRoutes()); err != nil {
 		log.Fatalf("Error occurred while setting up the server: %s", err.Error())
 	}
 }

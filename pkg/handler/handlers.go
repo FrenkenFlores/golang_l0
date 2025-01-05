@@ -1,14 +1,16 @@
 package handlers
 
 import (
-	"net/http"
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello World"))
+func (h *Handler) InitRoutes() *gin.Engine {
+	router := gin.New()
+	router.GET("/:id", func(c *gin.Context) { c.Writer.Write([]byte("Hello world!")) })
+	return router // Engine in the Gin framework has the same interface as http.Handler from the standard Go library.
 }
 
 func NewHandler() *Handler {
