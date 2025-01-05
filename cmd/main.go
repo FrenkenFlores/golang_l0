@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	gol0 "github.com/FrenkenFlores/golang_l0"
@@ -9,6 +8,7 @@ import (
 	"github.com/FrenkenFlores/golang_l0/pkg/repository"
 	"github.com/FrenkenFlores/golang_l0/pkg/service"
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -19,12 +19,13 @@ func initConfigs() error {
 }
 
 func main() {
+	logrus.SetFormatter(new(logrus.JSONFormatter))
 	if err := initConfigs(); err != nil {
-		log.Fatalf("Erorr occurred while reading configs: %s", err.Error())
+		logrus.Fatalf("Erorr occurred while reading configs: %s", err.Error())
 		return
 	}
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error occured while loading env: %s", err.Error())
+		logrus.Fatalf("error occured while loading env: %s", err.Error())
 	}
 	repository, err := repository.NewRepository(repository.Config{
 		Host:     viper.GetStringMapString("db")["host"],
@@ -35,13 +36,13 @@ func main() {
 		SslMode:  viper.GetStringMapString("db")["sslmode"],
 	})
 	if err != nil {
-		log.Fatalf("Error occurred while creating repository: %s", err.Error())
+		logrus.Fatalf("Error occurred while creating repository: %s", err.Error())
 		return
 	}
 	service := service.NewService(repository)
 	handlers := handlers.NewHandler(service)
 	port := viper.GetString("port")
 	if err := gol0.NewServer(port, handlers.InitRoutes()); err != nil {
-		log.Fatalf("Error occurred while setting up the server: %s", err.Error())
+		logrus.Fatalf("Error occurred while setting up the server: %s", err.Error())
 	}
 }
