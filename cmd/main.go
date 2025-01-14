@@ -2,9 +2,12 @@ package main
 
 import (
 	"os"
+	"os/signal"
 
 	gol0 "github.com/FrenkenFlores/golang_l0"
-	handlers "github.com/FrenkenFlores/golang_l0/pkg/handler"
+	handlerkafka "github.com/FrenkenFlores/golang_l0/internal/handler-kafka"
+	"github.com/FrenkenFlores/golang_l0/internal/kafka"
+	"github.com/FrenkenFlores/golang_l0/pkg/handler"
 	"github.com/FrenkenFlores/golang_l0/pkg/repository"
 	"github.com/FrenkenFlores/golang_l0/pkg/service"
 	"github.com/joho/godotenv"
@@ -17,6 +20,13 @@ func initConfigs() error {
 	viper.SetConfigName("config")
 	return viper.ReadInConfig()
 }
+
+const (
+	consumerGroup = "orders"
+	topic         = "orders"
+)
+
+var address = []string{"localhost:9092"}
 
 func main() {
 	logrus.SetFormatter(new(logrus.JSONFormatter))
@@ -40,9 +50,22 @@ func main() {
 		return
 	}
 	service := service.NewService(repository)
-	handlers := handlers.NewHandler(service)
+	handlers := handler.NewHandler(service)
 	port := viper.GetString("port")
+
+	kafkaHandler := handlerkafka.NewHandler()
+	consumer, err := kafka.NewConsumer(kafkaHandler, address, topic, consumerGroup)
+	if err != nil {
+		logrus.Fatalf("Error occurred while creating consumer: %s", err.Error())
+	}
+	go func() {
+		consumer.Start()
+	}()
 	if err := gol0.NewServer(port, handlers.InitRoutes()); err != nil {
 		logrus.Fatalf("Error occurred while setting up the server: %s", err.Error())
 	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+	<-sigChan
+	consumer.Stop()
 }
