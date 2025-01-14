@@ -22,6 +22,189 @@ type PostgresDB struct {
 	database *sqlx.DB
 }
 
+func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
+	sqlStatement := `
+		INSERT INTO orders (
+			order_uid,
+			track_number,
+			entry,
+			locale,
+			internal_signature,
+			customer_id,
+			delivery_service,
+			shardkey,
+			sm_id,
+			date_created,
+			oof_shard
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4, 
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11
+		)
+		RETURNING id`
+	id := 0
+	err := r.database.QueryRow(
+		sqlStatement,
+		orderObj.OrderUid,
+		orderObj.TrackNumber,
+		orderObj.Entry,
+		orderObj.Locale,
+		orderObj.InternalSignature,
+		orderObj.CustomerId,
+		orderObj.DeliveryService,
+		orderObj.SharedKey,
+		orderObj.SmId,
+		orderObj.DateCreated,
+		orderObj.OofShard,
+	).Scan(&id)
+	if err != nil {
+		panic(err)
+	}
+	sqlStatement = `
+		INSERT INTO delivery (
+			order_id,
+			name,
+			phone,
+			zip,
+			city,
+			address,
+			region,
+			email
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8
+		)
+		RETURNING id`
+	id = 0
+	err = r.database.QueryRow(
+		sqlStatement,
+		orderObj.Delivery.OrderId,
+		orderObj.Delivery.Name,
+		orderObj.Delivery.Phone,
+		orderObj.Delivery.Zip,
+		orderObj.Delivery.City,
+		orderObj.Delivery.Address,
+		orderObj.Delivery.Region,
+		orderObj.Delivery.Email,
+	).Scan(&id)
+	if err != nil {
+		panic(err)
+	}
+	sqlStatement = `
+		INSERT INTO payment (
+			order_id,
+			transaction,
+			request_id,
+			currency,
+			provider,
+			amount,
+			payment_dt,
+			bank,
+			delivery_cost,
+			goods_total,
+			custom_fee
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11
+		)
+		RETURNING id`
+	id = 0
+	err = r.database.QueryRow(
+		sqlStatement,
+		orderObj.Payment.OrderId,
+		orderObj.Payment.Transaction,
+		orderObj.Payment.RequestId,
+		orderObj.Payment.Currency,
+		orderObj.Payment.Provider,
+		orderObj.Payment.Amount,
+		orderObj.Payment.PaymentDt,
+		orderObj.Payment.Bank,
+		orderObj.Payment.DeliveryCost,
+		orderObj.Payment.GoodsTotal,
+		orderObj.Payment.CustomFee,
+	).Scan(&id)
+	if err != nil {
+		panic(err)
+	}
+	for idx := 0; idx < len(orderObj.Items); idx++ {
+		sqlStatement = `
+			INSERT INTO payment (
+				order_id,
+				chrt_id,
+				track_number,
+				price,
+				rid,
+				name,
+				sale,
+				size,
+				total_price,
+				nm_id,
+				brand,
+				status
+			)
+			VALUES (
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				$9,
+				$10,
+				$11,
+				$12
+			)
+			RETURNING id`
+		id = 0
+		err = r.database.QueryRow(
+			sqlStatement,
+			orderObj.Items[idx].OrderId,
+			orderObj.Items[idx].ChrtId,
+			orderObj.Items[idx].TrackNumber,
+			orderObj.Items[idx].Price,
+			orderObj.Items[idx].Rid,
+			orderObj.Items[idx].Name,
+			orderObj.Items[idx].Sale,
+			orderObj.Items[idx].Size,
+			orderObj.Items[idx].TotalPrice,
+			orderObj.Items[idx].NmId,
+			orderObj.Items[idx].Brand,
+			orderObj.Items[idx].Status,
+		).Scan(&id)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func (r *PostgresDB) GetOrder(id string) (int, map[string]any) {
 	var order gol0.Order
 	row := r.database.QueryRow("SELECT * FROM orders WHERE id=$1", id)

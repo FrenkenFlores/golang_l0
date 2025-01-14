@@ -3,7 +3,7 @@ package kafka
 import (
 	"strings"
 
-	"github.com/FrenkenFlores/golang_l0/internal/kafka"
+	"github.com/FrenkenFlores/golang_l0/pkg/repository"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/sirupsen/logrus"
 )
@@ -13,7 +13,7 @@ const (
 )
 
 type Handler interface {
-	HandleMessage(message []byte, offset kafka.Offset) error
+	HandleMessage(message []byte, offset kafka.Offset, repo repository.Repository) error
 }
 
 type Consumer struct {
@@ -36,14 +36,14 @@ func NewConsumer(handler Handler, address []string, topic string, consumerGroup 
 	if err != nil {
 		return nil, err
 	}
-	if err = c.Subscibe(topic, nil); err != nil {
+	if err = c.Subscribe(topic, nil); err != nil {
 		return nil, err
 	}
 
 	return &Consumer{consumer: c, handler: handler}, nil
 }
 
-func (c *Consumer) Start() {
+func (c *Consumer) Start(repo repository.Repository) {
 	for {
 		if c.stop {
 			break
@@ -55,11 +55,11 @@ func (c *Consumer) Start() {
 		if kafkaMsg == nil {
 			continue
 		}
-		if err := c.handler.HandleMessage(kafkaMsg.Value, kafkaMsg.TopicPartition.Offset); err != nil {
+		if err := c.handler.HandleMessage(kafkaMsg.Value, kafkaMsg.TopicPartition.Offset, repo); err != nil {
 			logrus.Error(err)
 			continue
 		}
-		if _, err = c.consumer.StoreMesssage(kafkaMsg); err != nil {
+		if _, err = c.consumer.StoreMessage(kafkaMsg); err != nil {
 			logrus.Error(err)
 			continue
 		}

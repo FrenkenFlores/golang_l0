@@ -59,7 +59,7 @@ func main() {
 		logrus.Fatalf("Error occurred while creating consumer: %s", err.Error())
 	}
 	go func() {
-		consumer.Start()
+		consumer.Start(*repository)
 	}()
 	if err := gol0.NewServer(port, handlers.InitRoutes()); err != nil {
 		logrus.Fatalf("Error occurred while setting up the server: %s", err.Error())
