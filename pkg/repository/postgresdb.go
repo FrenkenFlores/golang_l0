@@ -91,10 +91,9 @@ func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
 			$8
 		)
 		RETURNING id`
-	id = 0
 	err = r.database.QueryRow(
 		sqlStatement,
-		orderObj.Delivery.OrderId,
+		id,
 		orderObj.Delivery.Name,
 		orderObj.Delivery.Phone,
 		orderObj.Delivery.Zip,
@@ -102,7 +101,7 @@ func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
 		orderObj.Delivery.Address,
 		orderObj.Delivery.Region,
 		orderObj.Delivery.Email,
-	).Scan(&id)
+	).Err()
 	if err != nil {
 		panic(err)
 	}
@@ -134,10 +133,9 @@ func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
 			$11
 		)
 		RETURNING id`
-	id = 0
 	err = r.database.QueryRow(
 		sqlStatement,
-		orderObj.Payment.OrderId,
+		id,
 		orderObj.Payment.Transaction,
 		orderObj.Payment.RequestId,
 		orderObj.Payment.Currency,
@@ -148,13 +146,13 @@ func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
 		orderObj.Payment.DeliveryCost,
 		orderObj.Payment.GoodsTotal,
 		orderObj.Payment.CustomFee,
-	).Scan(&id)
+	).Err()
 	if err != nil {
 		panic(err)
 	}
 	for idx := 0; idx < len(orderObj.Items); idx++ {
 		sqlStatement = `
-			INSERT INTO payment (
+			INSERT INTO items (
 				order_id,
 				chrt_id,
 				track_number,
@@ -183,10 +181,9 @@ func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
 				$12
 			)
 			RETURNING id`
-		id = 0
 		err = r.database.QueryRow(
 			sqlStatement,
-			orderObj.Items[idx].OrderId,
+			id,
 			orderObj.Items[idx].ChrtId,
 			orderObj.Items[idx].TrackNumber,
 			orderObj.Items[idx].Price,
@@ -198,7 +195,7 @@ func (r *PostgresDB) SetOrder(orderObj gol0.Order) {
 			orderObj.Items[idx].NmId,
 			orderObj.Items[idx].Brand,
 			orderObj.Items[idx].Status,
-		).Scan(&id)
+		).Err()
 		if err != nil {
 			panic(err)
 		}
@@ -222,7 +219,7 @@ func (r *PostgresDB) GetOrder(id string) (int, map[string]any) {
 		&order.DateCreated,
 		&order.OofShard,
 	)
-	row = r.database.QueryRow("SELECT * FROM delivery WHERE id=$1", id)
+	row = r.database.QueryRow("SELECT * FROM delivery WHERE order_id=$1", id)
 	row.Scan(
 		&order.Delivery.Id,
 		&order.Delivery.OrderId,
@@ -234,7 +231,7 @@ func (r *PostgresDB) GetOrder(id string) (int, map[string]any) {
 		&order.Delivery.Region,
 		&order.Delivery.Email,
 	)
-	row = r.database.QueryRow("SELECT * FROM payment WHERE id=$1", id)
+	row = r.database.QueryRow("SELECT * FROM payment WHERE order_id=$1", id)
 	row.Scan(
 		&order.Payment.Id,
 		&order.Payment.OrderId,
@@ -249,7 +246,7 @@ func (r *PostgresDB) GetOrder(id string) (int, map[string]any) {
 		&order.Payment.GoodsTotal,
 		&order.Payment.CustomFee,
 	)
-	rows, err := r.database.Query("SELECT * FROM items WHERE id=$1", id)
+	rows, err := r.database.Query("SELECT * FROM items WHERE order_id=$1", id)
 	if err != nil {
 		return http.StatusInternalServerError, map[string]any{"error": err.Error()}
 	}
